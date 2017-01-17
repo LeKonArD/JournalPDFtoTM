@@ -1,0 +1,9 @@
+Python >=3.5.2
+python-re
+python-io
+python-os
+python-sys
+
+mallet >=2.0
+
+pdftohtml
