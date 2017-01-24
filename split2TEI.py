@@ -111,15 +111,17 @@ satzende = [".","!","?"]
 absatzende = False
 fussnotenref2 = 0
 seitenummer = 0
+fussnotenzeichenz = 0
+fussnotenref = 0
 for filepath in files:
 	## initialisierung von steuerungsvariablen
 	img = False
+	zitatstart = False
 	seitenummer = seitenummer + 1
 	titleart = list()
 	fussnotenstart = False	
 	zeilenabstand = list()
-	fussnotenzeichenz = 0
-	fussnotenref = 0
+	
 	
 	lens = list()
 	## Iteration über alle Seiten
@@ -140,41 +142,51 @@ for filepath in files:
 			top = re.sub("top:|px","",top.group(0))
 			if 235 > int(top) > 108:
 				if clean(zeile)[0].isupper() and clean(zeile)[1].islower() :
-					print(clean(zeile))
+					
 					titleart.append(clean(zeile))
 					firstsite.append(filepath)
 					img = False 
 		img = False
 	masterlayout = getmasterlayout(pagelayout)
-	
+	if filepath in firstsite:
+		masterfirstsite = masterlayout
 	breite = int(np.mean(breite))
 	
 	## masterlayout: fontsize, aussensteg, zeilenabstand
 
 	layoutz = 0
 	site = open(filepath,"r",encoding="utf-8")
-	print(firstsite)
+	
 	for line in site:
 		
 	## generating output
 		if line.startswith("<img") and filepath not in firstsite:
 			fussnotenstart = False
 			output+= "<seite nr=\""+str(seitenummer)+"\"><text><p>"
-			print("ok")
+			
 
 		if line.startswith("<div"):
+			
 			if len(pagelayout) > layoutz:
 				zeilenabstand.append(int(pagelayout[layoutz][1]) - int(pagelayout[(layoutz-1)][1]))
+		#	if zitatstart == True and fussnotenstart == False and titlestmt == False and int(pagelayout[layoutz][2]) < masterlayout[0]:
+		#		if int(math.fabs(int(pagelayout[layoutz][0]) - masterlayout[1])) > 15:
+		#			output+= clean(line)
+		#		else:
+		#			output+="</zitat>"
+		#			zitatstart = False
 			
-			
-			if  fussnotenstart == False and int(math.fabs(int(pagelayout[layoutz][0]) - masterlayout[1])) < 12 and len(pagelayout[layoutz]) == 4:
+			print(int(math.fabs(int(pagelayout[layoutz][0]) - masterlayout[1])))
+			if  fussnotenstart == False and int(math.fabs(int(pagelayout[layoutz][0]) - masterlayout[1])) < 15 and len(pagelayout[layoutz]) == 4:
 				## Regel für einfache Zeilen ohne Eigenschaften
 				output+=clean(line)
-
-  
+			
+  			
 			if int(pagelayout[layoutz][2]) > masterlayout[0] and filepath in firstsite:
 				## Regel für Überschriften
 				seitenummer = 1
+				fussnotenzeichenz = 0
+				fussnotenref = 0
 				fussnotenref2 = 0
 				output+="</TEI>"
 				print(titleout)
@@ -189,25 +201,41 @@ for filepath in files:
 				title = "<title level=\"a\" type=\"mean\">"+title+"</title>"
 				output+=title
 				titlestmt = True
+				subtitle = True
+				
+			if subtitle == True and int(pagelayout[layoutz][2]) > masterlayout[0] and filepath in firstsite:
+				output += "<subtitle>"+clean(line)+"</subtitle>"
+				subtitle = False
+				
+
+
 
 			if re.match("Von\s+.+\(.+\)",clean(line)) and titlestmt == True:
 				## Regeln für Autoren
 				autor = re.sub("Von|\(.*\)","",clean(line))
 				ort = re.search("\(.*\)",clean(line))
-				print(autor)
-				print(ort)
 				output+="<author>"+autor+"</author>"+"<ort>"+ort.group(0)+"</ort><p>"
 				titlestmt = False
 
- 
-			if zeilenabstand[layoutz-1] == masterlayout[2] and zeilenabstand[layoutz] > masterlayout[2] + 2 and int(pagelayout[layoutz][2]) < masterlayout[0] and fussnotenstart == False:
+
+
+
+			
+		#	if fussnotenstart == False and int(math.fabs(int(pagelayout[layoutz][0]) - masterlayout[1])) > 15 and zitatstart == False and titlestmt == False and int(pagelayout[layoutz][2]) <= masterlayout[0]:
+				## Regeln für Zitateanfänge
+		#		zitatstart = "<zitat>"+clean(line)
+		#		output+= zitatstart
+		#		zitatstart == True 
+			
+
+			if zeilenabstand[layoutz-1] <= masterfirstsite[2] and zeilenabstand[layoutz] > masterfirstsite[2] + 2 and int(pagelayout[layoutz][2]) < masterfirstsite[0] and fussnotenstart == False and titlestmt == False and subtitle == False:
 				## Regel für den Start der Fussnoten
 				fussnotenstart = True
 				if re.match("^[[1-9,\']{1,3}\)",clean(line)):
 					footnote = "</p></text><fussnotenteil><note anchored=\"true\" targedEnd='"+str(fussnotenref2)+"'>"+clean(line)
 					fussnotenref2 = fussnotenref2 + 1
 				else:
-					footnote = "</p></text><fussnotenteil><note anchored=\"true\" targedEnd='"+str(fussnotenref2)+"'>"+clean(line)	
+					footnote = "</p></text><fussnotenteil><note anchored=\"true\" targedEnd='"+str(fussnotenref2-1)+"'>"+clean(line)	
 				output+=footnote
 				continue
 			
